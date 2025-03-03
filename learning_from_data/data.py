@@ -63,7 +63,7 @@ class NonnegativePCADataset(Dataset):
         if planted.numel() > 0:
             x = torch.randn(planted.numel(), self.n)
             x = torch.abs(x) / torch.norm(x, dim=-1, keepdim=True)
-            A[planted] += self.beta * x.unsqueeze(2) @ x.unsqueeze(1)
+            A[planted] += self.beta * np.sqrt(self.n) * x.unsqueeze(2) @ x.unsqueeze(1)
         self.A, self.y = A / np.sqrt(self.n), y
         torch.save((self.A, self.y), self.fname)
 
