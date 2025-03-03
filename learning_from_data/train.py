@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
 import torchmetrics
-import numpy as np
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
-import wandb, os
+import wandb
 import matplotlib.pyplot as plt
 
 from learning_from_data.model import CustomLaplacian
@@ -190,7 +189,7 @@ class NNTrainingModule(pl.LightningModule):
         self.model.eval()
         x = torch.range(-10, 10, 0.1).unsqueeze(1).to(self.device).float()
         y = self.model.mlp(x).detach()
-        fname = os.path.join(self.params["log_dir"], "learned_sigma.png")
+        fname = self.params["log_dir"] / "learned_sigma.png"
         plt.plot(x.cpu().numpy(), y.cpu().numpy())
         plt.savefig(fname)
         plt.close()

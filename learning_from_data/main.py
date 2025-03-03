@@ -1,8 +1,7 @@
-import os
 import argparse
 from learning_from_data.train import train
+from learning_from_data import CURRENT_DIR
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
