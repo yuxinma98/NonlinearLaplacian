@@ -195,7 +195,7 @@ class NNTrainingModule(pl.LightningModule):
         plt.close()
         if self.params.get("logger", True):
             logger = self.logger
-            logger.log_image(key="learned_sigma", images=[fname])
+            logger.log_image(key="learned_sigma", images=[str(fname)])
 
     def _compute_loss_and_metrics(self, batch, mode="train"):
         p = self.forward(batch[0])

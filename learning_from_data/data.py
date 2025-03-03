@@ -17,6 +17,7 @@ class PlantedSubmatrixDataset(Dataset):
     def generate_data(self):
         # generate noise matrix
         A = torch.randn(self.N, self.n, self.n)
+        A[:, torch.arange(self.n), torch.arange(self.n)] *= np.sqrt(2)
         A = A.tril(diagonal=0) + A.tril(diagonal=-1).transpose(-2, -1)
         # labels: plant submatrix or not
         y = torch.bernoulli(0.5 * torch.ones(self.N))
@@ -41,14 +42,20 @@ class PlantedSubmatrixDataset(Dataset):
 
 
 class NonnegativePCADataset(Dataset):
-    def __init__(self, params):
-        self.params = params
-        self.N, self.n, self.beta = self.params["N"], self.params["n"], self.params["beta"]
-        self.generate_data()
+
+    def __init__(self, N, n, beta):
+        self.N, self.n, self.beta = N, n, beta
+        self.k = int(np.sqrt(n) * beta)
+        self.fname = data_dir / f"nonnegative_PCA_N={N}_n={n}_beta={beta}.pt"
+        try:
+            self.A, self.y = torch.load(self.fname)
+        except FileNotFoundError:
+            self.generate_data()
 
     def generate_data(self):
         # generate noise matrix
         A = torch.randn(self.N, self.n, self.n)
+        A[:, torch.arange(self.n), torch.arange(self.n)] *= np.sqrt(2)
         A = A.tril(diagonal=0) + A.tril(diagonal=-1).transpose(-2, -1)
         # labels: plant signal or not
         y = torch.bernoulli(0.5 * torch.ones(self.N))
@@ -58,20 +65,25 @@ class NonnegativePCADataset(Dataset):
             x = torch.abs(x) / torch.norm(x, dim=-1, keepdim=True)
             A[planted] += self.beta * x.unsqueeze(2) @ x.unsqueeze(1)
         self.A, self.y = A / np.sqrt(self.n), y
+        torch.save((self.A, self.y), self.fname)
 
     def __len__(self):
-        return self.params["N"]
+        return self.N
 
     def __getitem__(self, idx):
         return self.A[idx], self.y[idx]
 
 
 class PlantedCliqueDataset(Dataset):
-    def __init__(self, params):
-        self.params = params
-        self.N, self.n = self.params["N"], self.params["n"]
-        self.k = int(np.sqrt(self.n) * self.params["beta"])
-        self.generate_data()
+
+    def __init__(self, N, n, beta):
+        self.N, self.n, self.beta = N, n, beta
+        self.k = int(np.sqrt(n) * beta)
+        self.fname = data_dir / f"planted_clique_N={N}_n={n}_beta={beta}.pt"
+        try:
+            self.A, self.y = torch.load(self.fname)
+        except FileNotFoundError:
+            self.generate_data()
 
     def generate_data(self):
         # generate ER(0.5) graphs
@@ -88,10 +100,13 @@ class PlantedCliqueDataset(Dataset):
                 planted.reshape(-1, 1, 1),
                 clique_vertices.unsqueeze(2),
                 clique_vertices.unsqueeze(1),
-            ] += 1
-            A = A - torch.diag(torch.diag(A))
-        self.A = A * 2 - torch.ones(self.n, self.n) + torch.eye(self.n)
+            ] = 1
+            A[:, torch.arange(self.n), torch.arange(self.n)] = 0
+        self.A = (
+            A * 2 - torch.ones(self.n, self.n) + torch.eye(self.n)
+        )  # form signed adjacency matrix
         self.A, self.y = A / np.sqrt(self.n), y
+        torch.save((self.A, self.y), self.fname)
 
     def __len__(self):
         return self.params["N"]
