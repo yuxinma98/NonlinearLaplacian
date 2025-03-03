@@ -1,14 +1,18 @@
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-
+from learning_from_data import data_dir
 
 class PlantedSubmatrixDataset(Dataset):
-    def __init__(self, params):
-        self.params = params
-        self.N, self.n = self.params["N"], self.params["n"]
-        self.k = int(np.sqrt(self.n) * self.params["beta"])
-        self.generate_data()
+
+    def __init__(self, N, n, beta):
+        self.N, self.n, self.beta = N, n, beta
+        self.k = int(np.sqrt(n) * beta)
+        self.fname = data_dir / f"planted_submatrix_N={N}_n={n}_beta={beta}.pt"
+        try:
+            self.A, self.y = torch.load(self.fname)
+        except FileNotFoundError:
+            self.generate_data()
 
     def generate_data(self):
         # generate noise matrix
@@ -27,9 +31,10 @@ class PlantedSubmatrixDataset(Dataset):
                 clique_vertices.unsqueeze(1),
             ] += 1
         self.A, self.y = A / np.sqrt(self.n), y
+        torch.save((self.A, self.y), self.fname)
 
     def __len__(self):
-        return self.params["N"]
+        return self.N
 
     def __getitem__(self, idx):
         return self.A[idx], self.y[idx]

@@ -62,11 +62,26 @@ class NNTrainingModule(pl.LightningModule):
 
     def prepare_data(self):
         if self.params["task"] == "planted_submatrix":
-            self.dataset = PlantedSubmatrixDataset(self.params)
+            self.dataset = PlantedSubmatrixDataset(
+                N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
+            )
+            self.large_dataset = PlantedSubmatrixDataset(
+                N=self.params["test_N"], n=self.params["test_n"], beta=self.params["beta"]
+            )
         elif self.params["task"] == "nonnegative_pca":
-            self.dataset = NonnegativePCADataset(self.params)
+            self.dataset = NonnegativePCADataset(
+                N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
+            )
+            self.large_dataset = NonnegativePCADataset(
+                N=self.params["test_N"], n=self.params["test_n"], beta=self.params["beta"]
+            )
         elif self.params["task"] == "planted_clique":
-            self.dataset = PlantedCliqueDataset(self.params)
+            self.dataset = PlantedCliqueDataset(
+                N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
+            )
+            self.large_dataset = PlantedCliqueDataset(
+                N=self.params["test_N"], n=self.params["test_n"], beta=self.params["beta"]
+            )
 
     def setup(self, stage):
         """Train, val, test split."""
@@ -99,13 +114,21 @@ class NNTrainingModule(pl.LightningModule):
         )
 
     def test_dataloader(self):
-        return DataLoader(
+        test_loader = DataLoader(
             self.test_data,
             batch_size=self.params["batch_size"],
             shuffle=False,
             drop_last=False,
             pin_memory=True,
         )
+        large_test_loader = DataLoader(
+            self.large_dataset,
+            batch_size=self.params["batch_size"],
+            shuffle=False,
+            drop_last=False,
+            pin_memory=True,
+        )
+        return [test_loader, large_test_loader]
 
     def forward(self, data):
         return self.model(data)
@@ -139,24 +162,36 @@ class NNTrainingModule(pl.LightningModule):
         loss, acc = self._compute_loss_and_metrics(batch, mode="val")
         self.log_dict({"val_loss": loss, "val_acc": acc}, batch_size=len(batch))
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx, dataloader_idx=0):
         loss, acc, precision, recall = self._compute_loss_and_metrics(batch, mode="test")
-        self.log_dict(
-            {
-                "test_loss": loss,
-                "test_acc": acc,
-                "test_precision": precision,
-                "test_recall": recall,
-            },
-            batch_size=len(batch),
-        )
+        if dataloader_idx == 0:
+            self.log_dict(
+                {
+                    "test_loss": loss,
+                    "test_acc": acc,
+                    "test_precision": precision,
+                    "test_recall": recall,
+                },
+                batch_size=len(batch),
+            )
+        elif dataloader_idx == 1:
+            self.log_dict(
+                {
+                    "large_test_loss": loss,
+                    "large_test_acc": acc,
+                    "large_test_precision": precision,
+                    "large_test_recall": recall,
+                },
+                batch_size=len(batch),
+            )
 
     def on_test_end(self):
+        """plot learned sigma function."""
         self.model.eval()
-        x = torch.arange(-5, 5).to(self.device).float().view(-1, 1)
-        y = self.model.mlp(x).detach().cpu().numpy()
+        x = torch.range(-10, 10, 0.1).unsqueeze(1).to(self.device).float()
+        y = self.model.mlp(x).detach()
         fname = os.path.join(self.params["log_dir"], "learned_sigma.png")
-        plt.plot(x.cpu().numpy(), y)
+        plt.plot(x.cpu().numpy(), y.cpu().numpy())
         plt.savefig(fname)
         plt.close()
         if self.params.get("logger", True):
@@ -173,5 +208,4 @@ class NNTrainingModule(pl.LightningModule):
             precision = self.precision(preds, batch[1])
             recall = self.recall(preds, batch[1])
             return loss, acc, precision, recall
-
         return loss, acc
