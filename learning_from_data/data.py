@@ -5,10 +5,10 @@ from learning_from_data import data_dir
 
 class PlantedSubmatrixDataset(Dataset):
 
-    def __init__(self, N, n, beta):
+    def __init__(self, N, n, beta, suffix=""):
         self.N, self.n, self.beta = N, n, beta
         self.k = int(np.sqrt(n) * beta)
-        self.fname = data_dir / f"planted_submatrix_N={N}_n={n}_beta={beta}.pt"
+        self.fname = data_dir / f"planted_submatrix_N={N}_n={n}_beta={beta}{suffix}.pt"
         try:
             self.A, self.y = torch.load(self.fname)
         except FileNotFoundError:
@@ -43,10 +43,10 @@ class PlantedSubmatrixDataset(Dataset):
 
 class NonnegativePCADataset(Dataset):
 
-    def __init__(self, N, n, beta):
+    def __init__(self, N, n, beta, suffix=""):
         self.N, self.n, self.beta = N, n, beta
         self.k = int(np.sqrt(n) * beta)
-        self.fname = data_dir / f"nonnegative_PCA_N={N}_n={n}_beta={beta}.pt"
+        self.fname = data_dir / f"nonnegative_PCA_N={N}_n={n}_beta={beta}{suffix}.pt"
         try:
             self.A, self.y = torch.load(self.fname)
         except FileNotFoundError:
@@ -76,10 +76,10 @@ class NonnegativePCADataset(Dataset):
 
 class PlantedCliqueDataset(Dataset):
 
-    def __init__(self, N, n, beta):
+    def __init__(self, N, n, beta, suffix=""):
         self.N, self.n, self.beta = N, n, beta
         self.k = int(np.sqrt(n) * beta)
-        self.fname = data_dir / f"planted_clique_N={N}_n={n}_beta={beta}.pt"
+        self.fname = data_dir / f"planted_clique_N={N}_n={n}_beta={beta}{suffix}.pt"
         try:
             self.A, self.y = torch.load(self.fname)
         except FileNotFoundError:

@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
 import wandb
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
 
 from learning_from_data.model import CustomLaplacian
 from learning_from_data.data import (
@@ -64,22 +66,49 @@ class NNTrainingModule(pl.LightningModule):
             self.dataset = PlantedSubmatrixDataset(
                 N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
             )
-            self.large_dataset = PlantedSubmatrixDataset(
-                N=self.params["test_N"], n=self.params["test_n"], beta=self.params["beta"]
+            self.large_train_dataset = PlantedSubmatrixDataset(
+                N=self.params["test_N"],
+                n=self.params["test_n"],
+                beta=self.params["beta"],
+                suffix="_train",
+            )
+            self.large_test_dataset = PlantedSubmatrixDataset(
+                N=self.params["test_N"],
+                n=self.params["test_n"],
+                beta=self.params["beta"],
+                suffix="_test",
             )
         elif self.params["task"] == "nonnegative_pca":
             self.dataset = NonnegativePCADataset(
                 N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
             )
-            self.large_dataset = NonnegativePCADataset(
-                N=self.params["test_N"], n=self.params["test_n"], beta=self.params["beta"]
+            self.large_train_dataset = NonnegativePCADataset(
+                N=self.params["test_N"],
+                n=self.params["test_n"],
+                beta=self.params["beta"],
+                suffix="_train",
+            )
+            self.large_test_dataset = NonnegativePCADataset(
+                N=self.params["test_N"],
+                n=self.params["test_n"],
+                beta=self.params["beta"],
+                suffix="_test",
             )
         elif self.params["task"] == "planted_clique":
             self.dataset = PlantedCliqueDataset(
                 N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
             )
-            self.large_dataset = PlantedCliqueDataset(
-                N=self.params["test_N"], n=self.params["test_n"], beta=self.params["beta"]
+            self.large_train_dataset = PlantedCliqueDataset(
+                N=self.params["test_N"],
+                n=self.params["test_n"],
+                beta=self.params["beta"],
+                suffix="_train",
+            )
+            self.large_test_dataset = PlantedCliqueDataset(
+                N=self.params["test_N"],
+                n=self.params["test_n"],
+                beta=self.params["beta"],
+                suffix="_test",
             )
 
     def setup(self, stage):
@@ -120,14 +149,21 @@ class NNTrainingModule(pl.LightningModule):
             drop_last=False,
             pin_memory=True,
         )
-        large_test_loader = DataLoader(
-            self.large_dataset,
-            batch_size=self.params["batch_size"],
+        large_train_loader = DataLoader(
+            self.large_train_dataset,
+            batch_size=20,
             shuffle=False,
             drop_last=False,
             pin_memory=True,
         )
-        return [test_loader, large_test_loader]
+        large_test_loader = DataLoader(
+            self.large_test_dataset,
+            batch_size=20,
+            shuffle=False,
+            drop_last=False,
+            pin_memory=True,
+        )
+        return [test_loader, large_train_loader, large_test_loader]
 
     def forward(self, data):
         return self.model(data)
@@ -153,41 +189,50 @@ class NNTrainingModule(pl.LightningModule):
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
-        loss, acc = self._compute_loss_and_metrics(batch, mode="train")
+        loss, acc = self._compute_loss_and_metrics(batch)
         self.log_dict({"train_loss": loss, "train_acc": acc}, batch_size=len(batch))
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc = self._compute_loss_and_metrics(batch, mode="val")
+        loss, acc = self._compute_loss_and_metrics(batch)
         self.log_dict({"val_loss": loss, "val_acc": acc}, batch_size=len(batch))
 
+    def on_test_start(self):
+        self.large_train_out, self.large_train_target = [], []
+        self.large_test_out, self.large_test_target = [], []
+        return super().on_test_start()
+
     def test_step(self, batch, batch_idx, dataloader_idx=0):
-        loss, acc, precision, recall = self._compute_loss_and_metrics(batch, mode="test")
         if dataloader_idx == 0:
-            self.log_dict(
-                {
-                    "test_loss": loss,
-                    "test_acc": acc,
-                    "test_precision": precision,
-                    "test_recall": recall,
-                },
-                batch_size=len(batch),
-            )
+            loss, acc = self._compute_loss_and_metrics(batch)
+            self.log_dict({"test_loss": loss, "test_acc": acc}, batch_size=len(batch))
         elif dataloader_idx == 1:
-            self.log_dict(
-                {
-                    "large_test_loss": loss,
-                    "large_test_acc": acc,
-                    "large_test_precision": precision,
-                    "large_test_recall": recall,
-                },
-                batch_size=len(batch),
-            )
+            degree = torch.sum(batch[0], dim=-1).unsqueeze(-1)
+            out = self.model.mlp(degree.to(self.device).float()).squeeze(-1)
+            self.large_train_out.append(out)
+            self.large_train_target.append(batch[1])
+        elif dataloader_idx == 2:
+            degree = torch.sum(batch[0], dim=-1).unsqueeze(-1)
+            out = self.model.mlp(degree.to(self.device).float()).squeeze(-1)
+            self.large_test_out.append(out)
+            self.large_test_target.append(batch[1])
 
     def on_test_end(self):
-        """plot learned sigma function."""
-        self.model.eval()
-        x = torch.range(-10, 10, 0.1).unsqueeze(1).to(self.device).float()
+        # logistic regression on learned sigma function
+        train_x = torch.cat(self.large_train_out, dim=0).cpu().numpy()
+        train_y = torch.cat(self.large_train_target, dim=0).cpu().numpy()
+        test_x = torch.cat(self.large_test_out, dim=0).cpu().numpy()
+        test_y = torch.cat(self.large_test_target, dim=0).cpu().numpy()
+        model = LogisticRegression()
+        model.fit(train_x, train_y)
+        y_pred = model.predict(test_x)
+        accuracy = accuracy_score(test_y, y_pred)
+        if self.params.get("logger", True):
+            logger = self.logger
+            logger.log_metrics({"large_test_acc": accuracy})
+
+        # plot learned sigma function
+        x = torch.arange(-10, 10, 0.1).unsqueeze(1).to(self.device).float()
         y = self.model.mlp(x).detach()
         fname = self.params["log_dir"] / "learned_sigma.png"
         plt.plot(x.cpu().numpy(), y.cpu().numpy())
@@ -197,14 +242,9 @@ class NNTrainingModule(pl.LightningModule):
             logger = self.logger
             logger.log_image(key="learned_sigma", images=[str(fname)])
 
-    def _compute_loss_and_metrics(self, batch, mode="train"):
+    def _compute_loss_and_metrics(self, batch):
         p = self.forward(batch[0])
         preds = p > 0
         loss = self.bce_logit(p, batch[1].float())
         acc = self.accuracy(preds, batch[1])
-
-        if mode == "test":
-            precision = self.precision(preds, batch[1])
-            recall = self.recall(preds, batch[1])
-            return loss, acc, precision, recall
         return loss, acc
