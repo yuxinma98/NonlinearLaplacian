@@ -84,12 +84,9 @@ class CustomLaplacian(nn.Module):
         Returns:
             torch.Tensor: N x 1
         """
-        n = inputs.size(-1)
-        degree = torch.sum(inputs, dim=-1).unsqueeze(-1)  # N x n x 1
-        for layer in self.mlp:
-            x = layer(degree)
-        x = torch.diag_embed(x.squeeze(dim=-1))  # N x n x n
-        x = x + inputs  # N x n x n
-        D = torch.linalg.eigvalsh(x)  # N x n
-        lambda_max, _ = torch.max(D, dim=-1)  # N
+        d = torch.sum(inputs, dim=-1).unsqueeze(-1)  # N x n x 1
+        d = self.mlp(d).squeeze(dim=-1)
+        L = torch.diag_embed(d) + inputs  # N x n x n
+        evals = torch.linalg.eigvalsh(L)  # N x n
+        lambda_max = torch.max(evals, dim=-1)[0]  # N
         return self.head(lambda_max.unsqueeze(-1)).squeeze(-1)

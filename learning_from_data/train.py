@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torchmetrics
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
@@ -28,6 +28,7 @@ def train(config):
         mode="max",
         monitor="val_acc",
     )
+    early_stop_callback = EarlyStopping(monitor="val_loss", patience=30, mode="min")
     if config["logger"]:
         logger = WandbLogger(
             project=config["project"],
@@ -37,7 +38,7 @@ def train(config):
         )
         logger.watch(model, log=config["log_model"], log_freq=50)
     trainer = pl.Trainer(
-        callbacks=[model_checkpoint],  # , early_stop_callback],
+        callbacks=[model_checkpoint, early_stop_callback],
         devices=1,
         max_epochs=config["max_epochs"],
         logger=logger if config["logger"] else None,
