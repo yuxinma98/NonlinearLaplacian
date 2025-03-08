@@ -208,10 +208,10 @@ class NNTrainingModule(pl.LightningModule):
             loss, acc = self._compute_loss_and_metrics(batch)
             self.log_dict({"test_loss": loss, "test_acc": acc}, batch_size=len(batch))
         elif dataloader_idx == 1:
-            self.large_train_out.append(self.model.compute_lambda_max(batch[0]))
+            self.large_train_out.append(self.model.compute_lambda_max(batch[0]).reshape(-1, 1))
             self.large_train_target.append(batch[1])
         elif dataloader_idx == 2:
-            self.large_test_out.append(self.model.compute_lambda_max(batch[0]))
+            self.large_test_out.append(self.model.compute_lambda_max(batch[0]).reshape(-1, 1))
             self.large_test_target.append(batch[1])
 
     def on_test_end(self):
