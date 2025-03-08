@@ -28,7 +28,7 @@ def train(config):
         mode="max",
         monitor="val_acc",
     )
-    early_stop_callback = EarlyStopping(monitor="val_loss", patience=30, mode="min")
+    early_stop_callback = EarlyStopping(monitor="val_loss", patience=100, mode="min")
     if config["logger"]:
         logger = WandbLogger(
             project=config["project"],

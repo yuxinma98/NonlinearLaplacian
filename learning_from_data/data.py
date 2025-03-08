@@ -104,12 +104,12 @@ class PlantedCliqueDataset(Dataset):
             A[:, torch.arange(self.n), torch.arange(self.n)] = 0
         self.A = (
             A * 2 - torch.ones(self.n, self.n) + torch.eye(self.n)
-        )  # form signed adjacency matrix
-        self.A, self.y = A / np.sqrt(self.n), y
+        ) /np.sqrt(self.n) # form signed adjacency matrix
+        self.y = y
         torch.save((self.A, self.y), self.fname)
 
     def __len__(self):
-        return self.params["N"]
+        return self.N
 
     def __getitem__(self, idx):
         return self.A[idx], self.y[idx]

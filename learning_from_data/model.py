@@ -88,5 +88,5 @@ class CustomLaplacian(nn.Module):
         d = self.mlp(d).squeeze(dim=-1)
         L = torch.diag_embed(d) + inputs  # N x n x n
         evals = torch.linalg.eigvalsh(L)  # N x n
-        lambda_max = torch.max(evals, dim=-1)[0]  # N
+        lambda_max = evals[:, -1]
         return self.head(lambda_max.unsqueeze(-1)).squeeze(-1)
