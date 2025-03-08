@@ -39,8 +39,8 @@ if __name__ == "__main__":
         # --------training parameters--------
         "model": {
             "model": args.model,
-            "num_layers": 5,
-            "hidden_channels": 30,
+            "num_layers": 8,
+            "hidden_channels": 20,
         },
         "max_epochs": args.max_epochs,
         "weight_decay": 0.01,

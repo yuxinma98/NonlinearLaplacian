@@ -84,9 +84,20 @@ class CustomLaplacian(nn.Module):
         Returns:
             torch.Tensor: N x 1
         """
+        lambda_max = self.compute_lambda_max(inputs)
+        return self.head(lambda_max.unsqueeze(-1)).squeeze(-1)
+
+    def compute_lambda_max(self, inputs: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            inputs (torch.Tensor): N x n x n
+
+        Returns:
+            torch.Tensor: N x n
+        """
         d = torch.sum(inputs, dim=-1).unsqueeze(-1)  # N x n x 1
         d = self.mlp(d).squeeze(dim=-1)
         L = torch.diag_embed(d) + inputs  # N x n x n
         evals = torch.linalg.eigvalsh(L)  # N x n
-        lambda_max = evals[:, -1]
-        return self.head(lambda_max.unsqueeze(-1)).squeeze(-1)
+        lambda_max = evals[:, -1] # N
+        return lambda_max

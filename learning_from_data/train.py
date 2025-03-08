@@ -208,18 +208,14 @@ class NNTrainingModule(pl.LightningModule):
             loss, acc = self._compute_loss_and_metrics(batch)
             self.log_dict({"test_loss": loss, "test_acc": acc}, batch_size=len(batch))
         elif dataloader_idx == 1:
-            degree = torch.sum(batch[0], dim=-1).unsqueeze(-1)
-            out = self.model.mlp(degree.to(self.device).float()).squeeze(-1)
-            self.large_train_out.append(out)
+            self.large_train_out.append(self.model.compute_lambda_max(batch[0]))
             self.large_train_target.append(batch[1])
         elif dataloader_idx == 2:
-            degree = torch.sum(batch[0], dim=-1).unsqueeze(-1)
-            out = self.model.mlp(degree.to(self.device).float()).squeeze(-1)
-            self.large_test_out.append(out)
+            self.large_test_out.append(self.model.compute_lambda_max(batch[0]))
             self.large_test_target.append(batch[1])
 
     def on_test_end(self):
-        # logistic regression on learned sigma function
+        # logistic regression on largest eigenvalue to learn the threshold
         train_x = torch.cat(self.large_train_out, dim=0).cpu().numpy()
         train_y = torch.cat(self.large_train_target, dim=0).cpu().numpy()
         test_x = torch.cat(self.large_test_out, dim=0).cpu().numpy()
