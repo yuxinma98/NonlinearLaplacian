@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tasks=("planted_clique")
+tasks=("planted_submatrix" "nonnegative_pca")
 models=("tanh" "relu")
 
 for task in "${tasks[@]}"; do
