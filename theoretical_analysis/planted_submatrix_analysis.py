@@ -195,3 +195,45 @@ def c_for_step_function(beta, c_range, plot=False, tol=2e-12):
     image = [0, b.sum()]
     c = c_critical_discrete(c_range, sigma=(x, y), sigma_image=image, plot=plot, tol=tol)
     return c
+
+
+def generate_planted_matrix(n, k):
+    """Generate a matrix with a planted submatrix."""
+    A_p = np.random.randn(n, n)
+    A_p = (A_p + A_p.T) / np.sqrt(2)
+    clique_vertices = np.random.choice(n, k, replace=False)
+    A_p[clique_vertices.reshape(-1, 1), clique_vertices.reshape(1, -1)] += 1
+    return A_p / np.sqrt(n)
+
+
+def compute_free_convolution(sigma, zs_x, z_imag_part=1e-4, tolerance=1e-5, whole_support=True):
+    """Compute the free convolution of \mu_{SC} \boxplus \sigma(N(0,1))"""
+    zs = np.hstack([zs_x + z_imag_part * 1.0j])
+    num_zs = zs_x.shape[0]
+    # recursion for G
+    G = np.zeros((num_zs), dtype=np.complex128)
+    while True:
+        G_old = G.copy()
+        for j in range(num_zs):
+            real_integrand = lambda g: np.real(
+                1 / (np.sqrt(2 * np.pi)) * np.exp(-(g**2) / 2) / (zs[j] - G[j] - sigma(g))
+            )
+            imag_integrand = lambda g: np.imag(
+                1 / (np.sqrt(2 * np.pi)) * np.exp(-(g**2) / 2) / (zs[j] - G[j] - sigma(g))
+            )
+
+            real_result, real_error = spi.quad(real_integrand, -np.inf, np.inf)
+            imag_result, imag_error = spi.quad(imag_integrand, -np.inf, np.inf)
+
+            G[j] = real_result + 1j * imag_result
+        if np.linalg.norm(G - G_old) < tolerance:
+            break
+
+    # Stieltjes inversion
+    rho = -1 / np.pi * np.imag(G)
+    if whole_support and (rho[0] > tolerance or rho[-1] > tolerance):
+        print(rho[0], rho[-1])
+        raise Exception(
+            "Warning: zs_x does not cover the whole support. Increase the range of zs_x."
+        )
+    return rho
