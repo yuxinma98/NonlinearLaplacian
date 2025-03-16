@@ -156,7 +156,7 @@ def c_critical_discrete(c_range, sigma, sigma_image, plot=True, tol=2e-12):
     return c_critical
 
 
-def plot_step_function(beta):
+def plot_step_function(beta, fname=None):
     n = len(beta) // 2 - 1
     a, b = beta[0 : n + 1], beta[n + 1 :]
     x = np.cumsum(a)
@@ -167,9 +167,23 @@ def plot_step_function(beta):
     y_s = np.zeros_like(x_s)
     for i in range(0, n + 2):
         y_s[x_s >= x[i]] = y[i]
-    plt.plot(x_s, y_s)
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.plot(x_s, y_s, color="black")
+    ax.set_xticks([x[1], x[-2]])
+    ax.set_xticklabels([f"{x[1]:.3f}", f"{x[-2]:.3f}"], fontsize=16)
+    ax.set_yticks([0, y[-1]])
+    ax.set_yticklabels([0, f"{y[-1]:.3f}"], fontsize=16)
+    ax.vlines(x[1], y[0] - 0.2, y[-1] + 0.2, linestyle="--", color="gray", zorder=1)
+    ax.vlines(x[-2], y[0] - 0.2, y[-1] + 0.2, linestyle="--", color="gray", zorder=1)
+    ax.hlines(y[-1], -10, 10, linestyle="--", color="gray", zorder=1)
+    ax.hlines(y[0], -10, 10, linestyle="--", color="gray", zorder=1)
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(y[0] - 0.2, y[-1] + 0.2)
+    fig.tight_layout()
     plt.show()
-    plt.close()
+    if fname:
+        fig.savefig(fname)
+    plt.close(fig)
 
 
 def c_for_step_function(beta, c_range, plot=False, tol=2e-12):

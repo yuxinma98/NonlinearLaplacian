@@ -151,8 +151,8 @@ def theta_discrete(c, sigma, sigma_image, tol):
     def f(lam):  # lam_max is the root of this function, note it decreases in lam
         def integrand(g):
             cdfs = norm.cdf(sigma_x - c * sqrt_2_pi * np.abs(g))
-            cdfs_diff = cdfs[1:] - cdfs[:-1]    
-            return g**2 * cdfs_diff / (lam - sigma_y)
+            cdfs_diff = cdfs[1:] - cdfs[:-1]
+            return g**2 * (cdfs_diff / (lam - sigma_y)).sum()
         return gaussian_integral(integrand) - 1.0 / c
 
     a = sigma_image[1] + 1e-7  # lower bound for lam_max
@@ -163,18 +163,11 @@ def theta_discrete(c, sigma, sigma_image, tol):
     return lam_max
 
 
-def c_critical_discrete(c_range, sigma, sigma_image, plot=True):
+def c_critical_discrete(c_range, sigma, sigma_image, plot=True, tol=2e-12):
     """Critical value of c."""
-    sigma_x, sigma_y = sigma
-
-    def sigma_fn(x):
-        idx = np.searchsorted(sigma_x, x) - 1
-        idx = np.clip(idx, 0, len(sigma_x) - 2)
-        return sigma_y[idx]
-
     if plot:  # plot the diagram for theta(c) and H_prime(theta(c)) values
         c_values = np.linspace(c_range[0], c_range[1], 100)
-        theta_values = np.array([theta_discrete(c, sigma_fn, sigma_image) for c in c_values])
+        theta_values = np.array([theta_discrete(c, sigma, sigma_image, tol) for c in c_values])
         H_prime_values = np.array(
             [
                 H_prime_discrete(theta_values[i], sigma, c_values[i], sigma_image)
@@ -194,17 +187,44 @@ def c_critical_discrete(c_range, sigma, sigma_image, plot=True):
 
     if (
         H_prime_discrete(
-            theta_discrete(c_range[0], sigma_fn, sigma_image), sigma, c_range[0], sigma_image
+            theta_discrete(c_range[0], sigma, sigma_image, tol), sigma, c_range[0], sigma_image
         )
         * H_prime_discrete(
-            theta_discrete(c_range[1], sigma_fn, sigma_image), sigma, c_range[1], sigma_image
+            theta_discrete(c_range[1], sigma, sigma_image, tol), sigma, c_range[1], sigma_image
         )
         > 0
     ):  # no solution for H'=0 in the range
         return c_range[1]
     c_critical = spo.bisect(
-        lambda c: H_prime_discrete(theta_discrete(c, sigma_fn, sigma_image), sigma, c, sigma_image),
+        lambda c: H_prime_discrete(
+            theta_discrete(c, sigma, sigma_image, tol), sigma, c, sigma_image
+        ),
         c_range[0],
         c_range[1],
     )
     return c_critical
+
+
+def c_for_step_function(beta, c_range, plot=False, tol=2e-12):
+    """
+    Given parameter for the parametrized sigma function, compute c_critical.
+    beta = (a[0], a[1], ..., a[n], b[0], ..., b[n])
+    Define sigma to be a step function parametrized by:
+    f(x) = y[i] for x in (x[i], x[i+1]) where
+    x = (-np.inf, a[0], a[0:1].sum(), ..., a[0:n].sum(), np.inf)
+    y = (0, b[0], b[0:1].sum(), ..., b[0:n].sum(), b[0:n].sum())
+    """
+    if isinstance(beta, list):
+        beta = np.array(beta)
+    n = len(beta) // 2 - 1
+    a, b = beta[0 : n + 1], beta[n + 1 :]
+    assert (a[1:] >= 0).all()
+    assert (b >= 0).all()
+    x = np.cumsum(a)
+    x = np.concatenate(([-np.inf], x, [np.inf]))
+    y = np.cumsum(b)
+    y = np.concatenate(([0], y))
+
+    image = [0, b.sum()]
+    c = c_critical_discrete(c_range, sigma=(x, y), sigma_image=image, plot=plot, tol=tol)
+    return c
