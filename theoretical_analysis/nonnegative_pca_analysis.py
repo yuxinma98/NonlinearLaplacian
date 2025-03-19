@@ -3,6 +3,7 @@ import scipy.integrate as spi
 import matplotlib.pyplot as plt
 import scipy.optimize as spo
 from scipy.stats import norm
+from theoretical_analysis import gaussian_integral, beta_to_sigma
 
 
 def double_gaussian_integral(f):
@@ -98,23 +99,10 @@ def outlier_eval(c, sigma, sigma_image, tol):
 def compute_cdfs(x, c):
     """Compute the cdf of c\sqrt{2/pi} |g| + h"""
     sqrt_2_pi = np.sqrt(2 / np.pi)
-    sqrt_2pi = np.sqrt(2 * np.pi)
-
-    def integrand(t, g, c):
-        return norm.cdf(t - c * sqrt_2_pi * np.abs(g))
 
     return np.vectorize(
-        lambda t: spi.quad(
-            lambda g: integrand(t, g, c) * np.exp(-(g**2) / 2) / sqrt_2pi, -np.inf, np.inf
-        )[0]
-    )(x).cumsum()
-
-
-def gaussian_integral(f):
-    """General calculation of E[f(x)] for x ~ N(0, 1)."""
-    return spi.quad(
-        lambda x: f(x) * np.exp(-(x**2) / 2.0) / np.sqrt(2.0 * np.pi), -np.inf, np.inf
-    )[0]
+        lambda t: gaussian_integral(lambda g: norm.cdf(t - c * sqrt_2_pi * np.abs(g)))
+    )(x)
 
 
 def discrete_stieltjes(x, y, c):
@@ -134,20 +122,21 @@ def H_discrete(z, sigma, c):
     return z + discrete_stieltjes(sigma_x, 1.0 / (z - sigma_y), c)
 
 
-def H_prime_discrete(z, sigma, c, sigma_image):
+def H_prime_discrete(z, sigma, c):
     """Subordination function derivative."""
     if (
-        z >= sigma_image[0] and z <= sigma_image[1]
+        z >= 0 and z <= sigma[1][-1]
     ):  # H_prime undefined when z is in the range of the support of nu
         return -np.inf
     sigma_x, sigma_y = sigma
     return 1.0 - discrete_stieltjes(sigma_x, 1.0 / (z - sigma_y) ** 2, c)
 
 
-def theta_discrete(c, sigma, sigma_image, tol):
+def theta_discrete(c, sigma, tol):
     """Compute the effective signal."""
     sqrt_2_pi = np.sqrt(2 / np.pi)
     sigma_x,sigma_y=sigma
+    sigma_image = [0, sigma_y[-1]]
     def f(lam):  # lam_max is the root of this function, note it decreases in lam
         def integrand(g):
             cdfs = norm.cdf(sigma_x - c * sqrt_2_pi * np.abs(g))
@@ -163,16 +152,13 @@ def theta_discrete(c, sigma, sigma_image, tol):
     return lam_max
 
 
-def c_critical_discrete(c_range, sigma, sigma_image, plot=True, tol=2e-12):
+def c_critical_discrete(c_range, sigma, plot=True, tol=2e-12):
     """Critical value of c."""
     if plot:  # plot the diagram for theta(c) and H_prime(theta(c)) values
         c_values = np.linspace(c_range[0], c_range[1], 100)
-        theta_values = np.array([theta_discrete(c, sigma, sigma_image, tol) for c in c_values])
+        theta_values = np.array([theta_discrete(c, sigma, tol) for c in c_values])
         H_prime_values = np.array(
-            [
-                H_prime_discrete(theta_values[i], sigma, c_values[i], sigma_image)
-                for i in range(len(c_values))
-            ]
+            [H_prime_discrete(theta_values[i], sigma, c_values[i]) for i in range(len(c_values))]
         )
         # i = np.where(H_prime_values > -1)[0][0] # only plot the part where H_prime > -1
         i = 0
@@ -186,19 +172,13 @@ def c_critical_discrete(c_range, sigma, sigma_image, plot=True, tol=2e-12):
         plt.show()
 
     if (
-        H_prime_discrete(
-            theta_discrete(c_range[0], sigma, sigma_image, tol), sigma, c_range[0], sigma_image
-        )
-        * H_prime_discrete(
-            theta_discrete(c_range[1], sigma, sigma_image, tol), sigma, c_range[1], sigma_image
-        )
+        H_prime_discrete(theta_discrete(c_range[0], sigma, tol), sigma, c_range[0])
+        * H_prime_discrete(theta_discrete(c_range[1], sigma, tol), sigma, c_range[1])
         > 0
     ):  # no solution for H'=0 in the range
         return c_range[1]
     c_critical = spo.bisect(
-        lambda c: H_prime_discrete(
-            theta_discrete(c, sigma, sigma_image, tol), sigma, c, sigma_image
-        ),
+        lambda c: H_prime_discrete(theta_discrete(c, sigma, tol), sigma, c),
         c_range[0],
         c_range[1],
     )
@@ -216,15 +196,7 @@ def c_for_step_function(beta, c_range, plot=False, tol=2e-12):
     """
     if isinstance(beta, list):
         beta = np.array(beta)
-    n = len(beta) // 2 - 1
-    a, b = beta[0 : n + 1], beta[n + 1 :]
-    assert (a[1:] >= 0).all()
-    assert (b >= 0).all()
-    x = np.cumsum(a)
-    x = np.concatenate(([-np.inf], x, [np.inf]))
-    y = np.cumsum(b)
-    y = np.concatenate(([0], y))
-
-    image = [0, b.sum()]
-    c = c_critical_discrete(c_range, sigma=(x, y), sigma_image=image, plot=plot, tol=tol)
+    x, y = beta_to_sigma(beta)
+    c = c_critical_discrete(c_range, sigma=(x, y), plot=plot, tol=tol)
+    print(c)
     return c
