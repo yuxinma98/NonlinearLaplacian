@@ -76,7 +76,7 @@ def theta(c, sigma, sigma_image, tol):
     b = c + sigma_image[1] + 1e-7  # upper bound for lam_max
     if f(a) * f(b) > 0:  # no solution for f(lam) = 0
         return sigma_image[1]  # so that H'(theta) is inf
-    lam_max = spo.bisect(f, a, b, xtol=tol)
+    lam_max = spo.brentq(f, a, b, xtol=tol)
     return lam_max
 
 
@@ -104,7 +104,7 @@ def c_critical(c_range, sigma, sigma_image, plot=True, tol=2e-12):
         > 0
     ):  # no solution for H'=0 in the range
         return c_range[1]
-    c_critical = spo.bisect(
+    c_critical = spo.brentq(
         lambda c: H_prime(theta(c, sigma, sigma_image, tol), sigma, sigma_image),
         c_range[0],
         c_range[1],
@@ -160,7 +160,7 @@ def theta_discrete(c, sigma, tol):
     b = c + sigma_image[1] + 1e-7  # upper bound for lam_max
     if f(a) * f(b) > 0:  # no solution for f(lam) = 0
         return sigma_image[1]  # so that H'(theta) is -inf
-    lam_max = spo.bisect(f, a, b, xtol=tol)
+    lam_max = spo.brentq(f, a, b, xtol=tol)
     return lam_max
 
 
@@ -194,7 +194,7 @@ def c_critical_discrete(c_range, sigma, plot=True, tol=2e-12):
         > 0
     ):  # no solution for H'=0 in the range
         return c_range[1]
-    c_critical = spo.bisect(
+    c_critical = spo.brentq(
         lambda c: H_prime_discrete(theta_discrete(c, sigma, tol), sigma),
         c_range[0],
         c_range[1],
@@ -207,5 +207,5 @@ def c_for_step_function(beta, c_range, plot=False, tol=2e-12):
     if isinstance(beta, list):
         beta = np.array(beta)
     x, y = beta_to_sigma(beta)
-    c = c_critical_discrete(c_range, sigma=(x, y), sigma_image=[0, y[-1]], plot=plot, tol=tol)
+    c = c_critical_discrete(c_range, sigma=(x, y), plot=plot, tol=tol)
     return c

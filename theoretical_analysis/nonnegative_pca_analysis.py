@@ -43,11 +43,17 @@ def theta(c, sigma, sigma_image, tol):
             - 1.0 / c
         )
 
+    # def f_prime(lam):
+    #     return -double_gaussian_integral(
+    #         lambda g, d: g**2 / (lam - sigma(c * np.sqrt(2 / np.pi) * np.abs(g) + d)) ** 2
+    #     )
+
     a = sigma_image[1] + 1e-7  # lower bound for lam_max
     b = c + sigma_image[1] + 1e-7  # upper bound for lam_max
     if f(a) * f(b) > 0:  # no solution for f(lam) = 0
         return sigma_image[1]  # so that H'(theta) is -inf
-    lam_max = spo.bisect(f, a, b, xtol=tol)
+    # lam_max = spo.newton(f, a, fprime=f_prime, tol=tol)
+    lam_max = spo.brentq(f, a, b, xtol=tol)
     return lam_max
 
 
@@ -79,7 +85,7 @@ def c_critical(c_range, sigma, sigma_image, tol=2e-12, plot=True):
         > 0
     ):  # no solution for H'=0 in the range
         return c_range[1]
-    c_critical = spo.bisect(
+    c_critical = spo.brentq(
         lambda c: H_prime(theta(c, sigma, sigma_image, tol=tol), sigma, c, sigma_image),
         c_range[0],
         c_range[1],
@@ -148,7 +154,7 @@ def theta_discrete(c, sigma, tol):
     b = c + sigma_image[1] + 1e-7  # upper bound for lam_max
     if f(a) * f(b) > 0:  # no solution for f(lam) = 0
         return sigma_image[1]  # so that H'(theta) is -inf
-    lam_max = spo.bisect(f, a, b, xtol=tol)
+    lam_max = spo.brentq(f, a, b, xtol=tol)
     return lam_max
 
 
@@ -177,10 +183,11 @@ def c_critical_discrete(c_range, sigma, plot=True, tol=2e-12):
         > 0
     ):  # no solution for H'=0 in the range
         return c_range[1]
-    c_critical = spo.bisect(
+    c_critical = spo.brentq(
         lambda c: H_prime_discrete(theta_discrete(c, sigma, tol), sigma, c),
         c_range[0],
         c_range[1],
+        xtol=tol,
     )
     return c_critical
 
