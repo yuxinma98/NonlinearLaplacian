@@ -42,11 +42,11 @@ class MLP(nn.Module):
 
 
 class CustomLaplacian(nn.Module):
-    def __init__(self, params):
+
+    def __init__(self, model, hidden_channels, num_layers, eigenvector=False):
         super(CustomLaplacian, self).__init__()
-        hidden_channels = params["hidden_channels"]
-        num_layers = params["num_layers"]
-        if params["model"] == "relu":
+        self.eigenvector = eigenvector
+        if model == "relu":
             self.mlp = nn.Sequential(
                 MLP(
                     in_channels=1,
@@ -64,7 +64,7 @@ class CustomLaplacian(nn.Module):
                     nonlinearity="relu",
                 ),
             )
-        elif params["model"] == "tanh":
+        elif model == "tanh":
             self.mlp = nn.Sequential(
                 MLP(
                     in_channels=1,
@@ -84,20 +84,27 @@ class CustomLaplacian(nn.Module):
         Returns:
             torch.Tensor: N x 1
         """
-        lambda_max = self.compute_lambda_max(inputs)
-        return self.head(lambda_max.unsqueeze(-1)).squeeze(-1)
 
-    def compute_lambda_max(self, inputs: torch.Tensor) -> torch.Tensor:
+        if self.eigenvector:
+            return self.compute_top_eig(inputs)
+        else:
+            lambda_max = self.compute_top_eig(inputs)
+            return self.head(lambda_max.unsqueeze(-1)).squeeze(-1)
+
+    def compute_top_eig(self, inputs: torch.Tensor) -> torch.Tensor:
         """
         Args:
             inputs (torch.Tensor): N x n x n
 
         Returns:
-            torch.Tensor: N x n
+            torch.Tensor: N x n or N
         """
         d = torch.sum(inputs, dim=-1).unsqueeze(-1)  # N x n x 1
         d = self.mlp(d).squeeze(dim=-1)
         L = torch.diag_embed(d) + inputs  # N x n x n
-        evals = torch.linalg.eigvalsh(L)  # N x n
-        lambda_max = evals[:, -1] # N
-        return lambda_max
+        if self.eigenvector:
+            evals, evecs = torch.linalg.eigh(L)
+            return evecs[:, :, -1]
+        else:
+            evals = torch.linalg.eigvalsh(L)  # N x n
+            return evals[:, -1]

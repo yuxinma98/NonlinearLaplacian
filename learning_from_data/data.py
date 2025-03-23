@@ -17,8 +17,7 @@ class PlantedSubmatrixDataset(Dataset):
     def generate_data(self):
         # generate noise matrix
         A = torch.randn(self.N, self.n, self.n)
-        A[:, torch.arange(self.n), torch.arange(self.n)] *= np.sqrt(2)
-        A = A.tril(diagonal=0) + A.tril(diagonal=-1).transpose(-2, -1)
+        A = (A + A.transpose(-2, -1)) / np.sqrt(2)
         # labels: plant submatrix or not
         y = torch.bernoulli(0.5 * torch.ones(self.N))
         planted = (y == 1).nonzero().squeeze()
@@ -55,8 +54,7 @@ class NonnegativePCADataset(Dataset):
     def generate_data(self):
         # generate noise matrix
         A = torch.randn(self.N, self.n, self.n)
-        A[:, torch.arange(self.n), torch.arange(self.n)] *= np.sqrt(2)
-        A = A.tril(diagonal=0) + A.tril(diagonal=-1).transpose(-2, -1)
+        A = (A + A.transpose(-2, -1)) / np.sqrt(2)
         # labels: plant signal or not
         y = torch.bernoulli(0.5 * torch.ones(self.N))
         planted = (y == 1).nonzero().squeeze()
@@ -65,6 +63,34 @@ class NonnegativePCADataset(Dataset):
             x = torch.abs(x) / torch.norm(x, dim=-1, keepdim=True)
             A[planted] += self.beta * np.sqrt(self.n) * x.unsqueeze(2) @ x.unsqueeze(1)
         self.A, self.y = A / np.sqrt(self.n), y
+        torch.save((self.A, self.y), self.fname)
+
+    def __len__(self):
+        return self.N
+
+    def __getitem__(self, idx):
+        return self.A[idx], self.y[idx]
+
+
+class NonnegativePCARecoveryDataset(Dataset):
+
+    def __init__(self, N, n, beta, suffix=""):
+        self.N, self.n, self.beta = N, n, beta
+        self.k = int(np.sqrt(n) * beta)
+        self.fname = data_dir / f"nonnegative_PCA_recovery_N={N}_n={n}_beta={beta}{suffix}.pt"
+        try:
+            self.A, self.y = torch.load(self.fname)
+        except FileNotFoundError:
+            self.generate_data()
+
+    def generate_data(self):
+        # generate noise matrix
+        A = torch.randn(self.N, self.n, self.n)
+        A = (A + A.transpose(-2, -1)) / np.sqrt(2)
+        x = torch.randn(self.N, self.n)
+        x = torch.abs(x) / torch.norm(x, dim=-1, keepdim=True)
+        A += self.beta * np.sqrt(self.n) * x.unsqueeze(2) @ x.unsqueeze(1)
+        self.A, self.y = A / np.sqrt(self.n), x
         torch.save((self.A, self.y), self.fname)
 
     def __len__(self):

@@ -17,9 +17,15 @@ if __name__ == "__main__":
         type=str,
         default="planted_submatrix",
         help="Task to perform",
-        choices=["planted_submatrix", "nonnegative_pca", "planted_clique"],
+        choices=[
+            "planted_submatrix",
+            "nonnegative_pca",
+            "nonnegative_pca_recovery",
+            "planted_clique",
+        ],
     )
     parser.add_argument("--max_epochs", type=int, default=350, help="Number of epochs to train")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
     args = parser.parse_args()
     params = {
         "project": "custom_laplacian",
@@ -44,7 +50,7 @@ if __name__ == "__main__":
         },
         "max_epochs": args.max_epochs,
         "weight_decay": 0.01,
-        "lr": 0.01,
+        "lr": args.lr,
         "lr_patience": 10,
         # --------logging parameters--------
         "logger": True,  # whether to use logger at all (wandb)

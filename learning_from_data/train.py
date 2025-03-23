@@ -15,8 +15,22 @@ from learning_from_data.model import CustomLaplacian
 from learning_from_data.data import (
     PlantedSubmatrixDataset,
     NonnegativePCADataset,
+    NonnegativePCARecoveryDataset,
     PlantedCliqueDataset,
 )
+
+
+class DotProductLoss(nn.Module):
+    def __init__(self):
+        super(DotProductLoss, self).__init__()
+
+    def forward(self, pred, y):
+        y = y.double()  # N x n
+        pred = pred.double()  # N x n
+        dot = torch.bmm(pred.unsqueeze(dim=1), y.unsqueeze(dim=2))  # N x 1 x 1
+        square = torch.pow(dot, 2)
+        loss = 1 - square
+        return loss.mean()
 
 
 def train(config):
@@ -25,8 +39,8 @@ def train(config):
     model_checkpoint = ModelCheckpoint(
         filename="{epoch}-{step}-{val_loss:.2f}",
         save_last=True,
-        mode="max",
-        monitor="val_acc",
+        mode="min" if config["task"] == "nonnegative_pca_recovery" else "max",
+        monitor="val_loss" if config["task"] == "nonnegative_pca_recovery" else "val_acc",
     )
     early_stop_callback = EarlyStopping(monitor="val_loss", patience=100, mode="min")
     if config["logger"]:
@@ -38,7 +52,7 @@ def train(config):
         )
         logger.watch(model, log=config["log_model"], log_freq=50)
     trainer = pl.Trainer(
-        callbacks=[model_checkpoint, early_stop_callback],
+        callbacks=[model_checkpoint],  # , early_stop_callback],
         devices=1,
         max_epochs=config["max_epochs"],
         logger=logger if config["logger"] else None,
@@ -56,61 +70,39 @@ class NNTrainingModule(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(params)  # log hyperparameters in wandb
         self.params = params
-        self.model = CustomLaplacian(params["model"])
-        self.bce_logit = nn.BCEWithLogitsLoss()
-        self.accuracy = torchmetrics.Accuracy(task="binary")
-        self.precision = torchmetrics.Precision(task="binary")
-        self.recall = torchmetrics.Recall(task="binary")
+        self.model = CustomLaplacian(
+            **params["model"],
+            eigenvector=True if params["task"] == "nonnegative_pca_recovery" else False
+        )
+        if params["task"] == "nonnegative_pca_recovery":
+            self.loss = DotProductLoss()
+        else:
+            self.loss = nn.BCEWithLogitsLoss()
+            self.accuracy = torchmetrics.Accuracy(task="binary")
+            self.precision = torchmetrics.Precision(task="binary")
+            self.recall = torchmetrics.Recall(task="binary")
 
     def prepare_data(self):
-        if self.params["task"] == "planted_submatrix":
-            self.dataset = PlantedSubmatrixDataset(
-                N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
-            )
-            self.large_train_dataset = PlantedSubmatrixDataset(
-                N=self.params["test_N"],
-                n=self.params["test_n"],
-                beta=self.params["beta"],
-                suffix="_train",
-            )
-            self.large_test_dataset = PlantedSubmatrixDataset(
-                N=self.params["test_N"],
-                n=self.params["test_n"],
-                beta=self.params["beta"],
-                suffix="_test",
-            )
-        elif self.params["task"] == "nonnegative_pca":
-            self.dataset = NonnegativePCADataset(
-                N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
-            )
-            self.large_train_dataset = NonnegativePCADataset(
-                N=self.params["test_N"],
-                n=self.params["test_n"],
-                beta=self.params["beta"],
-                suffix="_train",
-            )
-            self.large_test_dataset = NonnegativePCADataset(
-                N=self.params["test_N"],
-                n=self.params["test_n"],
-                beta=self.params["beta"],
-                suffix="_test",
-            )
-        elif self.params["task"] == "planted_clique":
-            self.dataset = PlantedCliqueDataset(
-                N=self.params["N"], n=self.params["n"], beta=self.params["beta"]
-            )
-            self.large_train_dataset = PlantedCliqueDataset(
-                N=self.params["test_N"],
-                n=self.params["test_n"],
-                beta=self.params["beta"],
-                suffix="_train",
-            )
-            self.large_test_dataset = PlantedCliqueDataset(
-                N=self.params["test_N"],
-                n=self.params["test_n"],
-                beta=self.params["beta"],
-                suffix="_test",
-            )
+        dataset_dict = {
+            "planted_submatrix": PlantedSubmatrixDataset,
+            "nonnegative_pca": NonnegativePCADataset,
+            "nonnegative_pca_recovery": NonnegativePCARecoveryDataset,
+            "planted_clique": PlantedCliqueDataset,
+        }
+        dataset = dataset_dict[self.params["task"]]
+        self.dataset = dataset(N=self.params["N"], n=self.params["n"], beta=self.params["beta"])
+        self.large_train_dataset = dataset(
+            N=self.params["test_N"],
+            n=self.params["test_n"],
+            beta=self.params["beta"],
+            suffix="_train",
+        )
+        self.large_test_dataset = dataset(
+            N=self.params["test_N"],
+            n=self.params["test_n"],
+            beta=self.params["beta"],
+            suffix="_test",
+        )
 
     def setup(self, stage):
         """Train, val, test split."""
@@ -190,13 +182,23 @@ class NNTrainingModule(pl.LightningModule):
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
-        loss, acc = self._compute_loss_and_metrics(batch)
-        self.log_dict({"train_loss": loss, "train_acc": acc}, batch_size=len(batch))
+        if self.params["task"] == "nonnegative_pca_recovery":
+            y_pred = self.forward(batch[0])
+            loss = self.loss(y_pred, batch[1])
+            self.log_dict({"train_loss": loss}, batch_size=len(batch))
+        else:
+            loss, acc = self._compute_loss_and_metrics(batch)
+            self.log_dict({"train_loss": loss, "train_acc": acc}, batch_size=len(batch))
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc = self._compute_loss_and_metrics(batch)
-        self.log_dict({"val_loss": loss, "val_acc": acc}, batch_size=len(batch))
+        if self.params["task"] == "nonnegative_pca_recovery":
+            y_pred = self.forward(batch[0])
+            loss = self.loss(y_pred, batch[1])
+            self.log_dict({"val_loss": loss}, batch_size=len(batch))
+        else:
+            loss, acc = self._compute_loss_and_metrics(batch)
+            self.log_dict({"val_loss": loss, "val_acc": acc}, batch_size=len(batch))
 
     def on_test_start(self):
         self.large_train_out, self.large_train_target = [], []
@@ -204,17 +206,35 @@ class NNTrainingModule(pl.LightningModule):
         return super().on_test_start()
 
     def test_step(self, batch, batch_idx, dataloader_idx=0):
-        if dataloader_idx == 0:
-            loss, acc = self._compute_loss_and_metrics(batch)
-            self.log_dict({"test_loss": loss, "test_acc": acc}, batch_size=len(batch))
-        elif dataloader_idx == 1:
-            self.large_train_out.append(self.model.compute_lambda_max(batch[0]).reshape(-1, 1))
-            self.large_train_target.append(batch[1])
-        elif dataloader_idx == 2:
-            self.large_test_out.append(self.model.compute_lambda_max(batch[0]).reshape(-1, 1))
-            self.large_test_target.append(batch[1])
+        if self.params["task"] == "nonnegative_pca_recovery":
+            y_pred = self.forward(batch[0])
+            loss = self.loss(y_pred, batch[1])
+            self.log_dict({"test_loss": loss}, batch_size=len(batch))
+        else:
+            if dataloader_idx == 0:
+                loss, acc = self._compute_loss_and_metrics(batch)
+                self.log_dict({"test_loss": loss, "test_acc": acc}, batch_size=len(batch))
+            elif dataloader_idx == 1:
+                self.large_train_out.append(self.model.compute_top_eig(batch[0]).reshape(-1, 1))
+                self.large_train_target.append(batch[1])
+            elif dataloader_idx == 2:
+                self.large_test_out.append(self.model.compute_top_eig(batch[0]).reshape(-1, 1))
+                self.large_test_target.append(batch[1])
 
     def on_test_end(self):
+        # plot learned sigma function
+        x = torch.arange(-10, 10, 0.1).unsqueeze(1).to(self.device).float()
+        y = self.model.mlp(x).detach()
+        fname = self.params["log_dir"] / "learned_sigma.png"
+        plt.plot(x.cpu().numpy(), y.cpu().numpy())
+        plt.savefig(fname)
+        plt.close()
+        if self.params.get("logger", True):
+            logger = self.logger
+            logger.log_image(key="learned_sigma", images=[str(fname)])
+
+        if self.params["task"] == "nonnegative_pca_recovery":
+            return
         # logistic regression on largest eigenvalue to learn the threshold
         train_x = torch.cat(self.large_train_out, dim=0).cpu().numpy()
         train_y = torch.cat(self.large_train_target, dim=0).cpu().numpy()
@@ -228,20 +248,9 @@ class NNTrainingModule(pl.LightningModule):
             logger = self.logger
             logger.log_metrics({"large_test_acc": accuracy})
 
-        # plot learned sigma function
-        x = torch.arange(-10, 10, 0.1).unsqueeze(1).to(self.device).float()
-        y = self.model.mlp(x).detach()
-        fname = self.params["log_dir"] / "learned_sigma.png"
-        plt.plot(x.cpu().numpy(), y.cpu().numpy())
-        plt.savefig(fname)
-        plt.close()
-        if self.params.get("logger", True):
-            logger = self.logger
-            logger.log_image(key="learned_sigma", images=[str(fname)])
-
     def _compute_loss_and_metrics(self, batch):
         p = self.forward(batch[0])
         preds = p > 0
-        loss = self.bce_logit(p, batch[1].float())
+        loss = self.loss(p, batch[1].float())
         acc = self.accuracy(preds, batch[1])
         return loss, acc

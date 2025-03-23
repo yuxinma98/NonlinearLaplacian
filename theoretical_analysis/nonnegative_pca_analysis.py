@@ -6,6 +6,16 @@ from scipy.stats import norm
 from theoretical_analysis import gaussian_integral, beta_to_sigma
 
 
+def generate_nnpca_matrix(n, beta):
+    """Generate a matrix with a planted submatrix."""
+    A_p = np.random.randn(n, n)
+    A_p = (A_p + A_p.T) / np.sqrt(2)
+    x = np.random.randn(n)
+    x = np.abs(x) / np.linalg.norm(x)
+    A_p += beta * np.sqrt(n) * x @ x.T
+    return (A_p / np.sqrt(n), x)
+
+
 def double_gaussian_integral(f):
     """General calculation of E[f(x,y)] for x,y iid N(0, 1)."""
     return spi.nquad(
