@@ -12,8 +12,9 @@ def generate_nnpca_matrix(n, beta):
     A_p = (A_p + A_p.T) / np.sqrt(2)
     x = np.random.randn(n)
     x = np.abs(x) / np.linalg.norm(x)
+    x = x.reshape(-1, 1)
     A_p += beta * np.sqrt(n) * x @ x.T
-    return (A_p / np.sqrt(n), x)
+    return (A_p / np.sqrt(n), x.reshape(-1))
 
 
 def double_gaussian_integral(f):
