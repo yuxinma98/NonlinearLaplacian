@@ -1,0 +1,19 @@
+channels:
+  - conda-forge
+  - nvidia
+  - defaults
+dependencies:
+  - python=3.9
+  - ipykernel
+  - matplotlib
+  - numpy[version='<2']
+  - scikit-learn
+  - scikit-optimize
+  - scipy
+  - tqdm
+  # optional - only for learning from data using NN
+  - pytorch==1.13.1
+  - cudatoolkit=11.6
+  - pytorch-lightning
+  - torchmetrics
+  - wandb
