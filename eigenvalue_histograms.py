@@ -28,13 +28,16 @@ if __name__ == "__main__":
         A_p_evals = np.linalg.eigvalsh(A_p)
         if args.sigma == "tanh":
             diag_values = res.x[0] * np.tanh(res.x[1] * A_p.sum(axis=1))
+            sigma = lambda x: res.x[0] * np.tanh(res.x[1] * x)
         elif args.sigma == "zshape":
             diag_values = np.clamp(
                 res.x[1] / res.x[0] * (A_p.sum(axis=1)) - res.x[2], min=0, max=res.x[1]
             )
+            sigma = lambda x: min(res.x[1], max(0, res.x[1] / res.x[0] * (x - res.x[2])))
         elif args.sigma == "step":
             sigma = beta_to_sigma(res.x)
             diag_values = step_function(sigma, A_p.sum(axis=1))
+            sigma = lambda x: step_function(sigma, x)
 
         L_p = A_p + np.diag(diag_values)
         L_p_evals = np.linalg.eigvalsh(L_p)
@@ -42,11 +45,10 @@ if __name__ == "__main__":
         # Compute the free convolution
         x = np.linspace(-3, 3, 500)
         sc = np.sqrt(np.maximum(4 - x**2, 0)) / (2 * np.pi)
-        free_conv = submatrix.compute_free_convolution(
-            sigma=lambda x: res.x[0] * np.tanh(res.x[1] * x), zs_x=x
-        )
+        free_conv = submatrix.compute_free_convolution(sigma=sigma, zs_x=x)
 
+        results[str(beta)] = [A_p_evals, L_p_evals, x, sc, free_conv]
         pickle.dump(
-            [A_p_evals, L_p_evals, free_conv],
-            open(f"logs/planted_submatrix/eigenvalues_beta={beta}.pkl", "wb"),
+            results,
+            open(f"logs/planted_submatrix/eigenvalues.pkl", "wb"),
         )
