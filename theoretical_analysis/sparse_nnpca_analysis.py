@@ -7,7 +7,7 @@ from theoretical_analysis import gaussian_integral, beta_to_sigma
 
 
 def generate_nnpca_matrix(n, beta):
-    """Generate a matrix with a planted submatrix."""
+    """Generate a matrix under sparse nnpca model with eta = Law(|g|), g\sim N(0,1), p=beta/\sqrt{n}."""
     A_p = np.random.randn(n, n)
     A_p = (A_p + A_p.T) / np.sqrt(2)
     z = np.abs(np.random.randn(n))
