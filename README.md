@@ -33,5 +33,12 @@ If you have Anaconda or Miniconda installed, you can run the following command t
         ```bash
         python -m zshape_grid_search --model [model_name]
         ```
+* **Rerun phase transition experiment:** To rerun the script that take the optimized $\sigma$, check how $\lambda_1(\bm{L}), \langle \bm{v}_1(\bm{L}), \bm{x}\rangle$ varies with $\beta$, for a specific `[model_name]` (`planted_submatrix` or `gaussian_sparse_nnpca`) using sigma parametrization `[sigma]` (`tanh`, `zshape` or `step`):
+    1. Remove the corresponding result files: `logs/{model_name}/{sigma}_top_eigen_n=2000_N=100.pkl`
+    2. Ensure the blackbox optimization result file `logs/{model_name}/optimization_{sigma}.pkl` is available.
+    3. Execute the command:
+        ```bash
+        python -m phase_transition --model [model_name] --sigma [sigma]
+        ```
 
 **Warning:** Expect long running time for the `gaussian_sparse_nnpca` model.
