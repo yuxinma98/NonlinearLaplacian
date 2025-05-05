@@ -14,8 +14,6 @@ from sklearn.metrics import accuracy_score
 from learning_from_data.model import CustomLaplacian
 from learning_from_data.data import (
     PlantedSubmatrixDataset,
-    NonnegativePCADataset,
-    NonnegativePCARecoveryDataset,
     PlantedCliqueDataset,
 )
 

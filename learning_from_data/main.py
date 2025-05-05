@@ -19,8 +19,6 @@ if __name__ == "__main__":
         help="Task to perform",
         choices=[
             "planted_submatrix",
-            "nonnegative_pca",
-            "nonnegative_pca_recovery",
             "planted_clique",
         ],
     )
