@@ -6,3 +6,6 @@ learning_from_data/wandb
 .vscode
 learning_from_data/custom_laplacian
 theoretical_analysis/__pycache__
+logs_old
+plots_old
+__pycache__ 
