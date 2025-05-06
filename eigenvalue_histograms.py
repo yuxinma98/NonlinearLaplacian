@@ -51,7 +51,7 @@ if __name__ == "__main__":
         sc = np.sqrt(np.maximum(4 - x**2, 0)) / (2 * np.pi)
         free_conv = submatrix.compute_free_convolution(sigma=sigma, zs_x=x)
 
-        results[beta] = [A_p_evals, L_p_evals, x, sc, free_conv]
+        results[str(beta)] = [A_p_evals, L_p_evals, x, sc, free_conv]
         pickle.dump(
             results,
             open(f"logs/planted_submatrix/{args.sigma}_eigenvalues_n={n}.pkl", "wb"),

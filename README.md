@@ -26,6 +26,15 @@ If you have Anaconda or Miniconda installed, you can run the following command t
         python -m blackbox_optimization --model [model_name] --sigma [sigma]
         ```
     This command will run the optimization and regenerate the specified result file.
+    
+    **Warning:** Expect long running time for the `gaussian_sparse_nnpca` model.
+
+* **Rerun Neural Network Training:**  
+  To rerun neural network training for a specific `[model_name]` (`planted_submatrix` or `planted_clique`) using an MLP with the activation function `[activation]` (`tanh` or `relu`), execute the following command:
+  ```bash
+  python -m learning_from_data.main --task [model_name] --model [activation]
+  ```
+  This will train the neural network and save model checkpoints in `learning_from_data/nonlinear_laplacian`, which can be used for analysis. The script uses the Weights & Biases (wandb) logger; you may need to configure it appropriately to run the script.
 <!-- * **Rerun grid search for the Z-shaped $\sigma$:** To rerun the script that explore how $\beta^*$ varies with parameters $a,b,c$ for the Z-shaped $\sigma$, for a specific `[model_name]` (`planted_submatrix` or `gaussian_sparse_nnpca`):
     1. Remove the corresponding result files: `logs/{model_name}/c_critical*`.
     2. Ensure the blackbox optimization result file `logs/{model_name}/optimization_zshape.pkl` is available.
@@ -40,4 +49,3 @@ If you have Anaconda or Miniconda installed, you can run the following command t
         ```bash
         python -m phase_transition --model [model_name] --sigma [sigma]
         ``` -->
-**Warning:** Expect long running time for the `gaussian_sparse_nnpca` model.

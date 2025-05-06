@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tasks=("nonnegative_pca_recovery")  # Define tasks as an array
+tasks=("planted_submatrix planted_clique")  # Define tasks as an array
 models=("tanh" "relu")  # Models array
 
 for task in "${tasks[@]}"; do

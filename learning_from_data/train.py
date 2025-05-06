@@ -37,8 +37,8 @@ def train(config):
     model_checkpoint = ModelCheckpoint(
         filename="{epoch}-{step}-{val_loss:.2f}",
         save_last=True,
-        mode="min" if config["task"] == "nonnegative_pca_recovery" else "max",
-        monitor="val_loss" if config["task"] == "nonnegative_pca_recovery" else "val_acc",
+        mode="min",
+        monitor="val_loss",
     )
     early_stop_callback = EarlyStopping(monitor="val_loss", patience=100, mode="min")
     if config["logger"]:
@@ -68,10 +68,7 @@ class NNTrainingModule(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(params)  # log hyperparameters in wandb
         self.params = params
-        self.model = CustomLaplacian(
-            **params["model"],
-            eigenvector=True if params["task"] == "nonnegative_pca_recovery" else False
-        )
+        self.model = CustomLaplacian(**params["model"], eigenvector=False)
         if params["task"] == "nonnegative_pca_recovery":
             self.loss = DotProductLoss()
         else:
@@ -83,8 +80,6 @@ class NNTrainingModule(pl.LightningModule):
     def prepare_data(self):
         dataset_dict = {
             "planted_submatrix": PlantedSubmatrixDataset,
-            "nonnegative_pca": NonnegativePCADataset,
-            "nonnegative_pca_recovery": NonnegativePCARecoveryDataset,
             "planted_clique": PlantedCliqueDataset,
         }
         dataset = dataset_dict[self.params["task"]]
