@@ -13,7 +13,10 @@ def generate_nnpca_matrix(n, beta):
     z = np.abs(np.random.randn(n))
     epsilon = np.random.binomial(1, beta / np.sqrt(n), n)
     y = z * epsilon
-    x = y / np.linalg.norm(y)
+    if np.all(y == 0):
+        x = y
+    else:
+        x = y / np.linalg.norm(y)
     x = x.reshape(-1, 1)
     A_p += beta * np.sqrt(n) * x @ x.T
     return (A_p / np.sqrt(n), x.reshape(-1))
@@ -142,7 +145,7 @@ def H_prime_discrete(z, sigma):
     return 1.0 - gaussian_integral_discrete(sigma_x, 1.0 / (z - sigma_y) ** 2)
 
 
-def theta_discrete(c, sigma, tol):
+def theta_discrete(c, sigma, tol, **kwargs):
     """Compute the effective signal."""
     sqrt_2_pi = np.sqrt(2 / np.pi)
     sigma_x, sigma_y = sigma

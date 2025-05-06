@@ -13,6 +13,10 @@ if __name__ == "__main__":
     np.random.seed(0)
     with open(f"logs/planted_submatrix/optimization_{args.sigma}.pkl", "rb") as f:
         res = pickle.load(f)
+    if args.sigma == "step":
+        results_list = [res[str(seed)][2].fun for seed in range(10)]
+        argmin_seed = np.argmin(results_list)
+        res = res[str(argmin_seed)][2]
 
     # Load existing results if available
     try:
@@ -24,7 +28,7 @@ if __name__ == "__main__":
     for beta in [0, 0.9, 1.2]:
         if str(beta) in results:
             continue
-        A_p, _ = submatrix.generate_planted_matrix(n, int(np.sqrt(n) * beta))
+        A_p, _ = submatrix.generate_planted_matrix(n, beta)
         A_p_evals = np.linalg.eigvalsh(A_p)
         if args.sigma == "tanh":
             diag_values = res.x[0] * np.tanh(res.x[1] * A_p.sum(axis=1))
@@ -35,9 +39,9 @@ if __name__ == "__main__":
             )
             sigma = lambda x: min(res.x[1], max(0, res.x[1] / res.x[0] * (x - res.x[2])))
         elif args.sigma == "step":
-            sigma = beta_to_sigma(res.x)
-            diag_values = step_function(sigma, A_p.sum(axis=1))
-            sigma = lambda x: step_function(sigma, x)
+            sigma_xy = beta_to_sigma(res.x)
+            diag_values = step_function(sigma_xy, A_p.sum(axis=1))
+            sigma = lambda x: step_function(sigma_xy, x)
 
         L_p = A_p + np.diag(diag_values)
         L_p_evals = np.linalg.eigvalsh(L_p)
@@ -47,8 +51,8 @@ if __name__ == "__main__":
         sc = np.sqrt(np.maximum(4 - x**2, 0)) / (2 * np.pi)
         free_conv = submatrix.compute_free_convolution(sigma=sigma, zs_x=x)
 
-        results[str(beta)] = [A_p_evals, L_p_evals, x, sc, free_conv]
+        results[beta] = [A_p_evals, L_p_evals, x, sc, free_conv]
         pickle.dump(
             results,
-            open(f"logs/planted_submatrix/eigenvalues.pkl", "wb"),
+            open(f"logs/planted_submatrix/{args.sigma}_eigenvalues_n={n}.pkl", "wb"),
         )

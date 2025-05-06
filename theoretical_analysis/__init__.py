@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import scipy.integrate as spi
 import matplotlib.pyplot as plt
 
@@ -41,9 +42,14 @@ def step_function(sigma, t):
         for i in range(0, n + 2):
             y_t[(t >= x[i]) & (t < x[i + 1])] = y[i]
         return y_t
+    elif isinstance(t, torch.Tensor):
+        y_t = torch.zeros_like(t)
+        for i in range(0, n + 2):
+            y_t[(t >= x[i]) & (t < x[i + 1])] = y[i]
+        return y_t
 
 
-def plot_step_function(beta, fname=None):
+def plot_step_function(beta, fname=None, figsize=(4, 3), axes_rect=[0.2, 0.1, 0.7, 0.8]):
     """Plot the step function given the parametrization beta.
 
     Args:
@@ -53,7 +59,8 @@ def plot_step_function(beta, fname=None):
     x, y = beta_to_sigma(beta)
     x_s = np.linspace(-10, 10, 1000)
     y_s = step_function((x, y), x_s)
-    fig, ax = plt.subplots(figsize=(4, 3))
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_axes(axes_rect)
     ax.plot(x_s, y_s, color="black")
     ax.set_xticks([x[1], x[-2]])
     ax.set_xticklabels([f"{x[1]:.3f}", f"{x[-2]:.3f}"], fontsize=16)

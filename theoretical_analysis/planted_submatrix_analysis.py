@@ -6,8 +6,9 @@ from scipy.stats import norm
 from theoretical_analysis import gaussian_integral, beta_to_sigma
 
 
-def generate_planted_matrix(n, k):
+def generate_planted_matrix(n, beta):
     """Generate a matrix with a planted submatrix."""
+    k = int(np.sqrt(n) * beta)
     A_p = np.random.randn(n, n)
     A_p = (A_p + A_p.T) / np.sqrt(2)
     clique_vertices = np.random.choice(n, k, replace=False)
@@ -146,7 +147,7 @@ def H_prime_discrete(z, sigma):
     return 1.0 - gaussian_integral_discrete(sigma_x, 1.0 / (z - sigma_y) ** 2)
 
 
-def theta_discrete(c, sigma, tol):
+def theta_discrete(c, sigma, tol, **kwargs):
     """Compute the effective signal: the largest eigenvalue of signal X."""
     sigma_x, sigma_y = sigma
     sigma_image = [0, sigma_y[-1]]

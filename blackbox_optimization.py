@@ -49,7 +49,7 @@ if __name__ == "__main__":
             find_c_for_parametrized_sigma,
             x0=[2, 2, -1],  # initial guess for the parameters
             method="Nelder-Mead",
-            # options={"maxiter": 200},
+            # options={"xatol": 0.1, "fatol": 1e-5, "disp": True},
         )
         with open(pickle_file, "wb") as f:
             pickle.dump(res, f)
@@ -67,7 +67,7 @@ if __name__ == "__main__":
             find_c_for_parametrized_sigma,
             x0=[1, 1],  # initial guess for the parameters
             method="Nelder-Mead",
-            # options={"maxiter": 200},
+            # options={"xatol": 0.1, "fatol": 1e-5, "disp": True},
         )
         with open(pickle_file, "wb") as f:
             pickle.dump(res, f)
@@ -105,6 +105,7 @@ if __name__ == "__main__":
                 bounds=bounds,
                 callback=callback_function,
                 options={"initial_simplex": simplex},
+                # options={"initial_simplex": simplex, "xatol": 0.1, "fatol": 1e-5, "disp": True},
             )
             return historic_xks, historic_funs, res
 
