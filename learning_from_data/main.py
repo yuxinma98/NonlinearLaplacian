@@ -23,7 +23,7 @@ if __name__ == "__main__":
         ],
     )
     parser.add_argument("--max_epochs", type=int, default=350, help="Number of epochs to train")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
     args = parser.parse_args()
     params = {
         "project": "nonlinear_laplacian",

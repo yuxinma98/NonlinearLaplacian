@@ -1,7 +1,12 @@
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-from learning_from_data import data_dir
+import os
+from pathlib import Path
+
+data_dir = (
+    Path(os.environ.get("DATA_DIR", ".")) / "custom_laplacian"
+)  # get data dir from env variable
 
 class PlantedSubmatrixDataset(Dataset):
 

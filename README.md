@@ -35,6 +35,12 @@ If you have Anaconda or Miniconda installed, you can run the following command t
   python -m learning_from_data.main --task [model_name] --model [activation]
   ```
   This will train the neural network and save model checkpoints in `learning_from_data/nonlinear_laplacian`, which can be used for analysis. The script uses the Weights & Biases (wandb) logger; you may need to configure it appropriately to run the script.
+
+  To analyze trained models, execute
+  ```bash
+  python -m analyze_NN_runs --task [model_name] --model [activation]
+  ```
+  This will read the model checkpoints in `learning_from_data/nonlinear_laplacian`, compute the $\beta^*$, and save the results in `logs/planted_submatrix/NN_{model_name}_{activation}.pkl`.
 <!-- * **Rerun grid search for the Z-shaped $\sigma$:** To rerun the script that explore how $\beta^*$ varies with parameters $a,b,c$ for the Z-shaped $\sigma$, for a specific `[model_name]` (`planted_submatrix` or `gaussian_sparse_nnpca`):
     1. Remove the corresponding result files: `logs/{model_name}/c_critical*`.
     2. Ensure the blackbox optimization result file `logs/{model_name}/optimization_zshape.pkl` is available.

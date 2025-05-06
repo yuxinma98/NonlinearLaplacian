@@ -59,9 +59,10 @@ def train(config):
     trainer.fit(model)
     if config["logger"]:
         logger.experiment.unwatch(model)
-    trainer.test(model, verbose=True, ckpt_path="best")
+    test_results = trainer.test(model, verbose=True, ckpt_path="best")
+    wandb_run_id = logger.experiment.id
     wandb.finish()
-
+    return wandb_run_id, test_results[0].get("test_accuracy", None)
 
 class NNTrainingModule(pl.LightningModule):
     def __init__(self, params):

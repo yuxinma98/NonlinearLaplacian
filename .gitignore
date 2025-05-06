@@ -11,4 +11,3 @@ plots_old
 __pycache__ 
 learning_from_data/custom_laplacian_old
 learning_from_data/wandb_old
-learning_from_data/nonlinear_laplacian
