@@ -49,7 +49,15 @@ def step_function(sigma, t):
         return y_t
 
 
-def plot_step_function(beta, fname=None, figsize=(4, 3), axes_rect=[0.2, 0.1, 0.7, 0.8]):
+def plot_step_function(
+    beta,
+    fname=None,
+    figsize=(4, 3),
+    axes_rect=[0.2, 0.1, 0.7, 0.8],
+    fixed_y_range=False,
+    fontsize=18,
+    offset=0.05,
+):
     """Plot the step function given the parametrization beta.
 
     Args:
@@ -61,18 +69,22 @@ def plot_step_function(beta, fname=None, figsize=(4, 3), axes_rect=[0.2, 0.1, 0.
     y_s = step_function((x, y), x_s)
     fig = plt.figure(figsize=figsize)
     ax = fig.add_axes(axes_rect)
-    ax.plot(x_s, y_s, color="black")
+    ax.plot(x_s, y_s, color="black", linewidth=3)
     ax.set_xticks([x[1], x[-2]])
-    ax.set_xticklabels([f"{x[1]:.3f}", f"{x[-2]:.3f}"], fontsize=16)
+    ax.set_xticklabels([f"{x[1]:.1f}", f"{x[-2]:.1f}"], fontsize=fontsize)
     ax.set_yticks([0, y[-1]])
-    ax.set_yticklabels([0, f"{y[-1]:.3f}"], fontsize=16)
-    ax.vlines(x[1], y[0] - 0.2, y[-1] + 0.2, linestyle="--", color="gray", zorder=1)
-    ax.vlines(x[-2], y[0] - 0.2, y[-1] + 0.2, linestyle="--", color="gray", zorder=1)
+    ax.set_yticklabels([0, f"{y[-1]:.1f}"], fontsize=fontsize)
+    ax.vlines(x[1], y[0] - 10, y[-1] + 10, linestyle="--", color="gray", zorder=1)
+    ax.vlines(x[-2], y[0] - 10, y[-1] + 10, linestyle="--", color="gray", zorder=1)
     ax.hlines(y[-1], -10, 10, linestyle="--", color="gray", zorder=1)
     ax.hlines(y[0], -10, 10, linestyle="--", color="gray", zorder=1)
     ax.set_xlim(-10, 10)
-    ax.set_ylim(y[0] - 0.2, y[-1] + 0.2)
-    fig.tight_layout()
+    if fixed_y_range:
+        ax.set_ylim(y[0] - offset * 5.3, y[0] + 5.3 + offset * 5.3)
+        fname = fname.replace(".pdf", "_fixed_y.pdf")
+    else:
+        range = y[-1] - y[0]
+        ax.set_ylim(y[0] - offset * range, y[-1] + offset * range)
     plt.show()
     if fname:
         fig.savefig(fname)

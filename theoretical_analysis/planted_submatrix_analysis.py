@@ -81,6 +81,10 @@ def theta(c, sigma, sigma_image, tol):
     return lam_max
 
 
+# def X_eigenvector(c, theta, sigma):
+#     return 1 / c**2 / gaussian_integral(lambda g: 1.0 / (theta - sigma(c + g)) ** 2)
+
+
 def c_critical(c_range, sigma, sigma_image, plot=True, tol=2e-12):
     """Find critical value of c by solving H'(theta(c,sigma)) = 0."""
     if plot:  # plot the diagram for theta(c) and H_prime(theta(c)) values
