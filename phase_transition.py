@@ -2,19 +2,22 @@ import argparse
 import pickle
 import numpy as np
 import torch
-
+import os
 import theoretical_analysis.planted_submatrix_analysis as submatrix
 import theoretical_analysis.sparse_nnpca_analysis as gaussiannnpca
 from theoretical_analysis import beta_to_sigma, step_function
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, choices=["planted_submatrix", "gaussian_sparse_nnpca"])
+    parser.add_argument("--model", type=str, choices=["planted_submatrix", "planted_clique","gaussian_sparse_nnpca"])
     parser.add_argument("--sigma", type=str, choices=["zshape", "tanh", "step"], default="tanh")
     args = parser.parse_args()
 
     # Load the blackbox optimization result for z-shape sigma
-    pickle_file = f"logs/{args.model}/optimization_{args.sigma}.pkl"
+    if args.model == "planted_clique":
+        pickle_file = f"logs/planted_submatrix/optimization_{args.sigma}.pkl"
+    else:
+        pickle_file = f"logs/{args.model}/optimization_{args.sigma}.pkl"
     try:
         with open(pickle_file, "rb") as f:
             res = pickle.load(f)
@@ -27,17 +30,14 @@ if __name__ == "__main__":
     N = 500  # Number of samples per beta
     np.random.seed(0)
     betas = np.arange(0, 3, 0.05)  # Range of beta values
-    generator = (
-        gaussiannnpca.generate_nnpca_matrix
-        if args.model == "gaussian_sparse_nnpca"
-        else submatrix.generate_planted_matrix
-    )
     if args.model == "gaussian_sparse_nnpca":
+        generator = gaussiannnpca.generate_nnpca_matrix
         if args.sigma == "step":
             H, theta = gaussiannnpca.H_discrete, gaussiannnpca.theta_discrete
         else:
             H, theta = gaussiannnpca.H, gaussiannnpca.theta
-    elif args.model == "planted_submatrix":
+    elif args.model == "planted_submatrix" or args.model == "planted_clique":
+        generator = submatrix.generate_planted_matrix if args.model == "gaussian_sparse_nnpca" else submatrix.generate_planted_clique
         if args.sigma == "step":
             H, theta = submatrix.H_discrete, submatrix.theta_discrete
         else:
@@ -67,6 +67,7 @@ if __name__ == "__main__":
         results = {}
 
     # Computation of top eigenvalues and eigenvectors
+    os.makedirs(f"logs/{args.model}", exist_ok=True)
     for beta in betas:
         if beta in results:
             continue

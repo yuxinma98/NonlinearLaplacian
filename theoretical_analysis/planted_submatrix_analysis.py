@@ -19,6 +19,19 @@ def generate_planted_matrix(n, beta):
         y /= np.linalg.norm(y)
     return (A_p / np.sqrt(n), y)
 
+def generate_planted_clique(n, beta):
+    """Generate a matrix with a planted clique."""
+    k = int(np.sqrt(n) * beta)
+    A_p = np.random.binomial(1, 0.5, size=(n, n))
+    A_p = np.tril(A_p, k=-1) + np.tril(A_p, k=-1).T
+    clique_vertices = np.random.choice(n, k, replace=False)
+    A_p[clique_vertices.reshape(-1, 1), clique_vertices.reshape(1, -1)] = 1
+    y = np.zeros(n)
+    y[clique_vertices] = 1
+    if np.linalg.norm(y) > 0:
+        y /= np.linalg.norm(y)
+    A_p = (A_p * 2 - np.ones((n, n)) + np.eye(n)) / np.sqrt(n) # form signed adjacency matrix
+    return (A_p, y)
 
 def compute_free_convolution(sigma, zs_x, z_imag_part=1e-4, tolerance=1e-5, whole_support=True):
     """Compute the esd, i.e. free convolution of \mu_{SC} \boxplus \sigma(N(0,1))"""
