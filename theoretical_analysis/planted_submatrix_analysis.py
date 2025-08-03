@@ -135,6 +135,11 @@ def outlier_eval(c, sigma, sigma_image, tol=2e-12):
     """Evaluate the outlier eigenvalue when c > c_critical."""
     return H(theta(c, sigma, sigma_image, tol), sigma)
 
+def outlier_evec_overlap(c, sigma, sigma_image, theta_c=None, tol=2e-12):
+    """Evaluate the overlap of the outlier eigenvector with the planted clique eigenvector."""
+    if not theta_c:
+        theta_c = theta(c, sigma, sigma_image, tol)
+    return H_prime(z=theta_c, sigma=sigma, sigma_image=sigma_image) / c **2 / gaussian_integral(lambda g: 1.0 / (theta_c - sigma(c + g))**2) 
 
 ########################## Discrete version for fast evaluation on step functions #########################
 
@@ -227,3 +232,13 @@ def c_for_step_function(beta, c_range, plot=False, tol=2e-12):
     x, y = beta_to_sigma(beta)
     c = c_critical_discrete(c_range, sigma=(x, y), plot=plot, tol=tol)
     return c
+
+def outlier_evec_overlap_discrete(c, sigma, theta_c=None, tol=2e-12):
+    """Evaluate the overlap of the outlier eigenvector with the planted clique eigenvector."""
+    sigma_x, sigma_y = sigma
+    sigma_image = [0, sigma_y[-1]]
+    if not theta_c:
+        theta_c = theta_discrete(c, sigma, sigma_image, tol)
+    x = sigma_x - c
+    y = 1.0 / (theta_c - sigma_y)**2
+    return H_prime_discrete(z=theta_c, sigma=sigma, sigma_image=sigma_image) / c **2 / gaussian_integral_discrete(x,y)

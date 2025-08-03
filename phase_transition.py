@@ -33,15 +33,15 @@ if __name__ == "__main__":
     if args.model == "gaussian_sparse_nnpca":
         generator = gaussiannnpca.generate_nnpca_matrix
         if args.sigma == "step":
-            H, theta = gaussiannnpca.H_discrete, gaussiannnpca.theta_discrete
+            H, theta, outlier_evec_overlap = gaussiannnpca.H_discrete, gaussiannnpca.theta_discrete, gaussiannnpca.outlier_evec_overlap_discrete
         else:
-            H, theta = gaussiannnpca.H, gaussiannnpca.theta
+            H, theta, outlier_evec_overlap = gaussiannnpca.H, gaussiannnpca.theta, gaussiannnpca.outlier_evec_overlap
     elif args.model == "planted_submatrix" or args.model == "planted_clique":
         generator = submatrix.generate_planted_matrix if args.model == "gaussian_sparse_nnpca" else submatrix.generate_planted_clique
         if args.sigma == "step":
-            H, theta = submatrix.H_discrete, submatrix.theta_discrete
+            H, theta, outlier_evec_overlap = submatrix.H_discrete, submatrix.theta_discrete, submatrix.outlier_evec_overlap_discrete
         else:
-            H, theta = submatrix.H, submatrix.theta
+            H, theta, outlier_evec_overlap = submatrix.H, submatrix.theta, submatrix.outlier_evec_overlap
     if args.sigma == "tanh":
         sigma = lambda x: res.x[0] * np.tanh(res.x[1] * x)
         sigma_image = [-res.x[0], res.x[0]]
@@ -101,14 +101,17 @@ if __name__ == "__main__":
 
         # Compute the theoretical prediction
         if beta < res.fun:
-            prediction = edge_prediction
+            eval_prediction = edge_prediction
+            evec_prediction = 0
         else:
-            prediction = H(theta(c=beta, sigma=sigma, sigma_image=sigma_image, tol=2e-12), sigma)
+            theta_c = theta(c=beta, sigma=sigma, sigma_image=sigma_image, tol=2e-12)
+            eval_prediction = H(z=theta_c, sigma=sigma)
+            evec_prediction = outlier_evec_overlap(c=beta, sigma=sigma, sigma_image=sigma_image, theta_c=theta_c)
 
         # Save results
-        results[beta] = [A_p_evals, A_p_evecs, L_p_evals, L_p_evecs, prediction]
+        results[beta] = [A_p_evals, A_p_evecs, L_p_evals, L_p_evecs, eval_prediction, evec_prediction]
         print(
-            f"beta: {beta:.2f}, A_p_evals: {A_p_evals.mean():.4f}, L_p_evals: {L_p_evals.mean():.4f}, prediction: {prediction:.4f}"
+            f"beta: {beta:.2f}, A_p_evals: {A_p_evals.mean():.4f}, A_p_evecs: {A_p_evecs.mean():.4f}, L_p_evals: {L_p_evals.mean():.4f}, L_p_evecs: {L_p_evecs.mean():.4f}, eval_prediction: {eval_prediction:.4f}, evec_prediction: {evec_prediction:.4f}"
         )
         pickle.dump(
             results, open(f"logs/{args.model}/{args.sigma}_top_eigen_n={n}_N={N}.pkl", "wb")
