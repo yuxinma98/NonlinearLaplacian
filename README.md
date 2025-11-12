@@ -1,6 +1,9 @@
 # Nonlinear Laplacian Analysis
 
-This repository contains the Python code accompanying the paper: [**Nonlinear Laplacians: Tunable principal component analysis under directional prior information**](https://arxiv.org/abs/2505.12528).
+This repository contains the Python code accompanying the paper: **Nonlinear Laplacians: Tunable principal component analysis under directional prior information**
+
+[ArXiv](https://arxiv.org/abs/2505.12528)
+[NeurIPS](https://neurips.cc/virtual/2025/loc/san-diego/poster/116659)
 
 <!-- The codebase includes implementations for:
 
